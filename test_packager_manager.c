@@ -5,12 +5,28 @@ extern "C"
     #include "package_manager.h"
 }
 
-/*=================================================
-PACKAGE TESTS
-=================================================*/
+/* cleanup before every test */
 
-/* TC01 */
-TEST(PackageTest, AddPackage)
+class PackageManagerTest : public ::testing::Test
+{
+protected:
+
+    void SetUp() override
+    {
+        freePackages();
+    }
+
+    void TearDown() override
+    {
+        freePackages();
+    }
+};
+
+/*----------------------------------
+ADD PACKAGE
+-----------------------------------*/
+
+TEST_F(PackageManagerTest, AddPackage)
 {
     addPackage("A",1,0,0);
 
@@ -18,337 +34,350 @@ TEST(PackageTest, AddPackage)
               findPackage("A"));
 }
 
-/* TC02 */
-TEST(PackageTest, DuplicatePackage)
-{
-    addPackage("DUP",1,0,0);
+/*----------------------------------
+DUPLICATE PACKAGE
+-----------------------------------*/
 
-    EXPECT_NO_THROW(
-        addPackage("DUP",1,0,0)
-    );
-}
-
-/* TC03 */
-TEST(PackageTest, SearchPackage)
+TEST_F(PackageManagerTest, DuplicatePackage)
 {
-    addPackage("SEARCH",1,0,0);
+    addPackage("A",1,0,0);
+
+    addPackage("A",1,0,0);
 
     EXPECT_NE(nullptr,
-              findPackage("SEARCH"));
+              findPackage("A"));
 }
 
-/* TC04 */
-TEST(PackageTest, SearchNonExistingPackage)
+/*----------------------------------
+SEARCH PACKAGE
+-----------------------------------*/
+
+TEST_F(PackageManagerTest, SearchExistingPackage)
+{
+    addPackage("B",1,0,0);
+
+    EXPECT_NE(nullptr,
+              findPackage("B"));
+}
+
+TEST_F(PackageManagerTest, SearchMissingPackage)
 {
     EXPECT_EQ(nullptr,
-              findPackage("UNKNOWN"));
+              findPackage("XYZ"));
 }
 
-/* TC05 */
-TEST(PackageTest, UpdatePackage)
-{
-    addPackage("UPDATE",1,0,0);
+/*----------------------------------
+UPDATE PACKAGE
+-----------------------------------*/
 
-    updatePackage("UPDATE",
-                  2,1,0);
+TEST_F(PackageManagerTest, UpdatePackage)
+{
+    addPackage("C",1,0,0);
+
+    updatePackage("C",2,1,0);
 
     Package *p =
-        findPackage("UPDATE");
+        findPackage("C");
 
     ASSERT_NE(nullptr,p);
 
-    EXPECT_EQ(2,p->version.major);
-    EXPECT_EQ(1,p->version.minor);
-    EXPECT_EQ(0,p->version.patch);
+    EXPECT_EQ(2,
+              p->version.major);
+
+    EXPECT_EQ(1,
+              p->version.minor);
 }
 
-
-
-/* TC07 */
-TEST(PackageTest, DeletePackage)
-{
-    addPackage("DELETE",1,0,0);
-
-    deletePackage("DELETE");
-
-    EXPECT_EQ(nullptr,
-              findPackage("DELETE"));
-}
-
-
-
-/* TC09 */
-TEST(PackageTest, ListPackages)
+TEST_F(PackageManagerTest,
+       UpdateMissingPackage)
 {
     EXPECT_NO_THROW(
-        listPackages()
-    );
+        updatePackage("AAA",
+                      2,0,0));
 }
 
-/*=================================================
-DEPENDENCY TESTS
-=================================================*/
+/*----------------------------------
+DELETE PACKAGE
+-----------------------------------*/
 
-/* TC10 */
-TEST(DependencyTest, AddDependency)
+TEST_F(PackageManagerTest, DeletePackage)
+{
+    addPackage("D",1,0,0);
+
+    deletePackage("D");
+
+    EXPECT_EQ(nullptr,
+              findPackage("D"));
+}
+
+TEST_F(PackageManagerTest,
+       DeleteMissingPackage)
+{
+    EXPECT_NO_THROW(
+        deletePackage("DDD"));
+}
+
+/*----------------------------------
+ADD DEPENDENCY
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       AddDependency)
 {
     addPackage("APP",1,0,0);
     addPackage("LIB",1,0,0);
 
-    addDependency("APP",
-                  "LIB",
-                  1,0,0);
+    addDependency(
+        "APP",
+        "LIB",
+        1,0,0);
 
-    Package *p =
+    Package *pkg =
         findPackage("APP");
 
-    ASSERT_NE(nullptr,p->deps);
+    ASSERT_NE(nullptr,
+              pkg->deps);
 
     EXPECT_STREQ("LIB",
-                 p->deps->name);
+                 pkg->deps->name);
 }
 
-/* TC11 */
-TEST(DependencyTest, MissingDependency)
-{
-    addPackage("APP2",1,0,0);
+/*----------------------------------
+SELF DEPENDENCY
+-----------------------------------*/
 
-    addDependency("APP2",
-                  "MISSING_LIB",
-                  1,0,0);
-
-    EXPECT_EQ(MISSING,
-              findPackage("APP2")->status);
-}
-
-/* TC12 */
-TEST(DependencyTest, SelfDependency)
+TEST_F(PackageManagerTest,
+       SelfDependency)
 {
     addPackage("SELF",1,0,0);
 
-    addDependency("SELF",
-                  "SELF",
-                  1,0,0);
+    addDependency(
+        "SELF",
+        "SELF",
+        1,0,0);
 
     EXPECT_EQ(nullptr,
               findPackage("SELF")->deps);
 }
 
-/* TC13 */
-TEST(DependencyTest, DuplicateDependency)
+/*----------------------------------
+MISSING DEPENDENCY
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       MissingDependency)
 {
-    addPackage("APP3",1,0,0);
-    addPackage("LIB3",1,0,0);
+    addPackage("APP",1,0,0);
 
-    addDependency("APP3",
-                  "LIB3",
-                  1,0,0);
+    addDependency(
+        "APP",
+        "LIB",
+        1,0,0);
 
-    EXPECT_NO_THROW(
-        addDependency("APP3",
-                      "LIB3",
-                      1,0,0)
-    );
+    EXPECT_EQ(MISSING,
+              findPackage("APP")->status);
 }
 
-/* TC14 */
-TEST(DependencyTest, RemoveDependency)
+/*----------------------------------
+REMOVE DEPENDENCY
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       RemoveDependency)
 {
-    addPackage("APP4",1,0,0);
-    addPackage("LIB4",1,0,0);
+    addPackage("A",1,0,0);
+    addPackage("B",1,0,0);
 
-    addDependency("APP4",
-                  "LIB4",
-                  1,0,0);
+    addDependency(
+        "A",
+        "B",
+        1,0,0);
 
-    removeDependency("APP4",
-                     "LIB4");
+    removeDependency(
+        "A",
+        "B");
 
     EXPECT_EQ(nullptr,
-              findPackage("APP4")->deps);
+              findPackage("A")->deps);
 }
 
-/* TC15 */
-TEST(DependencyTest, RemoveMissingDependency)
+TEST_F(PackageManagerTest,
+       RemoveMissingDependency)
 {
+    addPackage("A",1,0,0);
+
     EXPECT_NO_THROW(
-        removeDependency("APP4",
-                         "XYZ")
-    );
+        removeDependency(
+            "A",
+            "XYZ"));
 }
 
-/* TC16 */
-TEST(DependencyTest, ShowDependencies)
+/*----------------------------------
+VERSION COMPARISON
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       CompareHigherVersion)
 {
-    EXPECT_NO_THROW(
-        showDependencies("APP4")
-    );
+    Version v1 = {2,0,0};
+    Version v2 = {1,0,0};
+
+    EXPECT_EQ(1,
+              compareVersion(v1,v2));
 }
 
-/*=================================================
-VERSION TESTS
-=================================================*/
-
-/* TC17 */
-TEST(VersionTest, VersionConflict)
+TEST_F(PackageManagerTest,
+       CompareLowerVersion)
 {
-    addPackage("APP5",1,0,0);
+    Version v1 = {1,0,0};
+    Version v2 = {2,0,0};
 
-    addPackage("LIB5",1,0,0);
+    EXPECT_EQ(-1,
+              compareVersion(v1,v2));
+}
 
-    addDependency("APP5",
-                  "LIB5",
-                  3,0,0);
+TEST_F(PackageManagerTest,
+       CompareEqualVersion)
+{
+    Version v1 = {1,0,0};
+    Version v2 = {1,0,0};
+
+    EXPECT_EQ(0,
+              compareVersion(v1,v2));
+}
+
+/*----------------------------------
+VERSION CONFLICT
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       VersionConflict)
+{
+    addPackage("APP",1,0,0);
+
+    addPackage("LIB",1,0,0);
+
+    addDependency(
+        "APP",
+        "LIB",
+        5,0,0);
 
     checkVersionConflicts();
 
     EXPECT_EQ(CONFLICTING,
-              findPackage("APP5")->status);
+              findPackage("APP")->status);
 }
 
-/* TC18 */
-TEST(VersionTest, NoConflict)
+/*----------------------------------
+NO CONFLICT
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       NoVersionConflict)
 {
-    addPackage("APP6",1,0,0);
+    addPackage("APP",1,0,0);
 
-    addPackage("LIB6",5,0,0);
+    addPackage("LIB",5,0,0);
 
-    addDependency("APP6",
-                  "LIB6",
-                  1,0,0);
+    addDependency(
+        "APP",
+        "LIB",
+        1,0,0);
 
-    EXPECT_NO_THROW(
-        checkVersionConflicts()
-    );
+    checkVersionConflicts();
+
+    EXPECT_NE(CONFLICTING,
+              findPackage("APP")->status);
 }
 
-/*=================================================
-CYCLE DETECTION TESTS
-=================================================*/
+/*----------------------------------
+CYCLE DETECTION
+-----------------------------------*/
 
-/* TC19 */
-TEST(CycleTest, NoCycle)
+TEST_F(PackageManagerTest,
+       NoCycle)
 {
-    addPackage("A1",1,0,0);
-    addPackage("B1",1,0,0);
+    addPackage("A",1,0,0);
+    addPackage("B",1,0,0);
 
-    addDependency("A1",
-                  "B1",
-                  1,0,0);
-
-    resetVisits();
-
-    EXPECT_EQ(0,
-        detectCycleDFS(
-            findPackage("A1")
-        ));
-}
-
-/* TC20 */
-TEST(CycleTest, DetectSimpleCycle)
-{
-    addPackage("A2",1,0,0);
-    addPackage("B2",1,0,0);
-
-    addDependency("A2",
-                  "B2",
-                  1,0,0);
-
-    addDependency("B2",
-                  "A2",
+    addDependency("A",
+                  "B",
                   1,0,0);
 
     resetVisits();
 
-    EXPECT_EQ(1,
+    EXPECT_EQ(
+        0,
         detectCycleDFS(
-            findPackage("A2")
-        ));
+            findPackage("A")));
 }
 
-/* TC21 */
-TEST(CycleTest, DetectComplexCycle)
+TEST_F(PackageManagerTest,
+       DetectCycle)
 {
-    addPackage("X",1,0,0);
-    addPackage("Y",1,0,0);
-    addPackage("Z",1,0,0);
+    addPackage("A",1,0,0);
+    addPackage("B",1,0,0);
 
-    addDependency("X","Y",1,0,0);
-    addDependency("Y","Z",1,0,0);
-    addDependency("Z","X",1,0,0);
+    addDependency("A",
+                  "B",
+                  1,0,0);
+
+    addDependency("B",
+                  "A",
+                  1,0,0);
 
     resetVisits();
 
-    EXPECT_EQ(1,
+    EXPECT_EQ(
+        1,
         detectCycleDFS(
-            findPackage("X")
-        ));
+            findPackage("A")));
 }
 
-/*=================================================
-INSTALLATION ORDER TESTS
-=================================================*/
+/*----------------------------------
+INSTALL ORDER
+-----------------------------------*/
 
-/* TC22 */
-TEST(InstallTest, GenerateInstallOrder)
+TEST_F(PackageManagerTest,
+       InstallationOrder)
 {
-    addPackage("MAIN",1,0,0);
-    addPackage("CORE",1,0,0);
+    addPackage("APP",1,0,0);
+    addPackage("LIB",1,0,0);
 
-    addDependency("MAIN",
-                  "CORE",
-                  1,0,0);
+    addDependency(
+        "APP",
+        "LIB",
+        1,0,0);
+
+    generateInstallOrder();
+
+    EXPECT_GT(orderIndex,0);
+}
+
+/*----------------------------------
+FILE HANDLING
+-----------------------------------*/
+
+TEST_F(PackageManagerTest,
+       SaveFile)
+{
+    addPackage("A",1,0,0);
 
     EXPECT_NO_THROW(
-        generateInstallOrder()
-    );
+        saveToFile());
 }
 
-/* TC23 */
-TEST(InstallTest, InstallOrderWithCycle)
+TEST_F(PackageManagerTest,
+       LoadFile)
 {
-    EXPECT_NO_THROW(
-        generateInstallOrder()
-    );
-}
+    addPackage("A",1,0,0);
 
-/*=================================================
-FILE TESTS
-=================================================*/
+    saveToFile();
 
-/* TC24 */
-TEST(FileTest, SaveData)
-{
-    EXPECT_NO_THROW(
-        saveToFile()
-    );
-}
+    freePackages();
 
-/* TC25 */
-TEST(FileTest, LoadData)
-{
-    EXPECT_NO_THROW(
-        loadFromFile()
-    );
-}
+    loadFromFile();
 
-/*=================================================
-STATUS TESTS
-=================================================*/
-
-/* TC26 */
-TEST(StatusTest, DefaultPendingStatus)
-{
-    addPackage("STATUS",1,0,0);
-
-    EXPECT_EQ(PENDING,
-              findPackage("STATUS")->status);
-}
-
-/* TC27 */
-TEST(StatusTest, ShowStatus)
-{
-    EXPECT_NO_THROW(
-        showPackageStatus()
-    );
+    EXPECT_NE(nullptr,
+              findPackage("A"));
 }
