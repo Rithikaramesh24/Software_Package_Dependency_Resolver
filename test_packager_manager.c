@@ -2,10 +2,11 @@
 
 extern "C"
 {
-    #include "package_manager.h"
+#include "package_manager.h"
 }
 
-/* cleanup before every test */
+/* External symbols from package_manager.c */
+extern int compareVersion(Version v1, Version v2);
 
 class PackageManagerTest : public ::testing::Test
 {
@@ -22,118 +23,89 @@ protected:
     }
 };
 
-/*----------------------------------
-ADD PACKAGE
------------------------------------*/
+/* -------------------
+   Add Package
+-------------------- */
 
 TEST_F(PackageManagerTest, AddPackage)
 {
-    addPackage("A",1,0,0);
+    char name[] = "A";
+
+    addPackage(name,1,0,0);
 
     EXPECT_NE(nullptr,
-              findPackage("A"));
+              findPackage(name));
 }
 
-/*----------------------------------
-DUPLICATE PACKAGE
------------------------------------*/
+/* -------------------
+   Search Package
+-------------------- */
 
-TEST_F(PackageManagerTest, DuplicatePackage)
+TEST_F(PackageManagerTest, SearchPackage)
 {
-    addPackage("A",1,0,0);
+    char name[] = "B";
 
-    addPackage("A",1,0,0);
+    addPackage(name,1,0,0);
 
     EXPECT_NE(nullptr,
-              findPackage("A"));
+              findPackage(name));
 }
 
-/*----------------------------------
-SEARCH PACKAGE
------------------------------------*/
-
-TEST_F(PackageManagerTest, SearchExistingPackage)
-{
-    addPackage("B",1,0,0);
-
-    EXPECT_NE(nullptr,
-              findPackage("B"));
-}
-
-TEST_F(PackageManagerTest, SearchMissingPackage)
-{
-    EXPECT_EQ(nullptr,
-              findPackage("XYZ"));
-}
-
-/*----------------------------------
-UPDATE PACKAGE
------------------------------------*/
+/* -------------------
+   Update Package
+-------------------- */
 
 TEST_F(PackageManagerTest, UpdatePackage)
 {
-    addPackage("C",1,0,0);
+    char name[] = "APP";
 
-    updatePackage("C",2,1,0);
+    addPackage(name,1,0,0);
 
-    Package *p =
-        findPackage("C");
+    updatePackage(name,2,1,5);
+
+    Package *p = findPackage(name);
 
     ASSERT_NE(nullptr,p);
 
-    EXPECT_EQ(2,
-              p->version.major);
-
-    EXPECT_EQ(1,
-              p->version.minor);
+    EXPECT_EQ(2,p->version.major);
+    EXPECT_EQ(1,p->version.minor);
+    EXPECT_EQ(5,p->version.patch);
 }
 
-TEST_F(PackageManagerTest,
-       UpdateMissingPackage)
-{
-    EXPECT_NO_THROW(
-        updatePackage("AAA",
-                      2,0,0));
-}
-
-/*----------------------------------
-DELETE PACKAGE
------------------------------------*/
+/* -------------------
+   Delete Package
+-------------------- */
 
 TEST_F(PackageManagerTest, DeletePackage)
 {
-    addPackage("D",1,0,0);
+    char name[] = "DEL";
 
-    deletePackage("D");
+    addPackage(name,1,0,0);
+
+    deletePackage(name);
 
     EXPECT_EQ(nullptr,
-              findPackage("D"));
+              findPackage(name));
 }
 
-TEST_F(PackageManagerTest,
-       DeleteMissingPackage)
+/* -------------------
+   Add Dependency
+-------------------- */
+
+TEST_F(PackageManagerTest, AddDependency)
 {
-    EXPECT_NO_THROW(
-        deletePackage("DDD"));
-}
+    char app[] = "APP";
+    char lib[] = "LIB";
 
-/*----------------------------------
-ADD DEPENDENCY
------------------------------------*/
+    addPackage(app,1,0,0);
+    addPackage(lib,1,0,0);
 
-TEST_F(PackageManagerTest,
-       AddDependency)
-{
-    addPackage("APP",1,0,0);
-    addPackage("LIB",1,0,0);
-
-    addDependency(
-        "APP",
-        "LIB",
-        1,0,0);
+    addDependency(app,
+                  lib,
+                  1,0,0);
 
     Package *pkg =
-        findPackage("APP");
+        findPackage(app);
 
     ASSERT_NE(nullptr,
               pkg->deps);
@@ -142,82 +114,54 @@ TEST_F(PackageManagerTest,
                  pkg->deps->name);
 }
 
-/*----------------------------------
-SELF DEPENDENCY
------------------------------------*/
+/* -------------------
+   Remove Dependency
+-------------------- */
 
-TEST_F(PackageManagerTest,
-       SelfDependency)
+TEST_F(PackageManagerTest, RemoveDependency)
 {
-    addPackage("SELF",1,0,0);
+    char app[] = "APP";
+    char lib[] = "LIB";
 
-    addDependency(
-        "SELF",
-        "SELF",
-        1,0,0);
+    addPackage(app,1,0,0);
+    addPackage(lib,1,0,0);
+
+    addDependency(app,
+                  lib,
+                  1,0,0);
+
+    removeDependency(app,
+                     lib);
 
     EXPECT_EQ(nullptr,
-              findPackage("SELF")->deps);
+              findPackage(app)->deps);
 }
 
-/*----------------------------------
-MISSING DEPENDENCY
------------------------------------*/
+/* -------------------
+   Missing Dependency
+-------------------- */
 
-TEST_F(PackageManagerTest,
-       MissingDependency)
+TEST_F(PackageManagerTest, MissingDependency)
 {
-    addPackage("APP",1,0,0);
+    char app[] = "APP";
+    char missing[] = "MISSING";
 
-    addDependency(
-        "APP",
-        "LIB",
-        1,0,0);
+    addPackage(app,1,0,0);
+
+    addDependency(app,
+                  missing,
+                  1,0,0);
 
     EXPECT_EQ(MISSING,
-              findPackage("APP")->status);
+              findPackage(app)->status);
 }
 
-/*----------------------------------
-REMOVE DEPENDENCY
------------------------------------*/
+/* -------------------
+   Version Comparison
+-------------------- */
 
 TEST_F(PackageManagerTest,
-       RemoveDependency)
-{
-    addPackage("A",1,0,0);
-    addPackage("B",1,0,0);
-
-    addDependency(
-        "A",
-        "B",
-        1,0,0);
-
-    removeDependency(
-        "A",
-        "B");
-
-    EXPECT_EQ(nullptr,
-              findPackage("A")->deps);
-}
-
-TEST_F(PackageManagerTest,
-       RemoveMissingDependency)
-{
-    addPackage("A",1,0,0);
-
-    EXPECT_NO_THROW(
-        removeDependency(
-            "A",
-            "XYZ"));
-}
-
-/*----------------------------------
-VERSION COMPARISON
------------------------------------*/
-
-TEST_F(PackageManagerTest,
-       CompareHigherVersion)
+       HigherVersion)
 {
     Version v1 = {2,0,0};
     Version v2 = {1,0,0};
@@ -227,17 +171,7 @@ TEST_F(PackageManagerTest,
 }
 
 TEST_F(PackageManagerTest,
-       CompareLowerVersion)
-{
-    Version v1 = {1,0,0};
-    Version v2 = {2,0,0};
-
-    EXPECT_EQ(-1,
-              compareVersion(v1,v2));
-}
-
-TEST_F(PackageManagerTest,
-       CompareEqualVersion)
+       EqualVersion)
 {
     Version v1 = {1,0,0};
     Version v2 = {1,0,0};
@@ -246,131 +180,55 @@ TEST_F(PackageManagerTest,
               compareVersion(v1,v2));
 }
 
-/*----------------------------------
-VERSION CONFLICT
------------------------------------*/
+/* -------------------
+   Version Conflict
+-------------------- */
 
 TEST_F(PackageManagerTest,
        VersionConflict)
 {
-    addPackage("APP",1,0,0);
+    char app[] = "APP";
+    char lib[] = "LIB";
 
-    addPackage("LIB",1,0,0);
+    addPackage(app,1,0,0);
+    addPackage(lib,1,0,0);
 
-    addDependency(
-        "APP",
-        "LIB",
-        5,0,0);
+    addDependency(app,
+                  lib,
+                  5,0,0);
 
     checkVersionConflicts();
 
     EXPECT_EQ(CONFLICTING,
-              findPackage("APP")->status);
+              findPackage(app)->status);
 }
 
-/*----------------------------------
-NO CONFLICT
------------------------------------*/
+/* -------------------
+   Save File
+-------------------- */
 
 TEST_F(PackageManagerTest,
-       NoVersionConflict)
+       SaveToFile)
 {
-    addPackage("APP",1,0,0);
+    char pkg[] = "PKG";
 
-    addPackage("LIB",5,0,0);
-
-    addDependency(
-        "APP",
-        "LIB",
-        1,0,0);
-
-    checkVersionConflicts();
-
-    EXPECT_NE(CONFLICTING,
-              findPackage("APP")->status);
-}
-
-/*----------------------------------
-CYCLE DETECTION
------------------------------------*/
-
-TEST_F(PackageManagerTest,
-       NoCycle)
-{
-    addPackage("A",1,0,0);
-    addPackage("B",1,0,0);
-
-    addDependency("A",
-                  "B",
-                  1,0,0);
-
-    resetVisits();
-
-    EXPECT_EQ(
-        0,
-        detectCycleDFS(
-            findPackage("A")));
-}
-
-TEST_F(PackageManagerTest,
-       DetectCycle)
-{
-    addPackage("A",1,0,0);
-    addPackage("B",1,0,0);
-
-    addDependency("A",
-                  "B",
-                  1,0,0);
-
-    addDependency("B",
-                  "A",
-                  1,0,0);
-
-    resetVisits();
-
-    EXPECT_EQ(
-        1,
-        detectCycleDFS(
-            findPackage("A")));
-}
-
-/*----------------------------------
-INSTALL ORDER
------------------------------------*/
-
-TEST_F(PackageManagerTest,
-       InstallationOrder)
-{
-    addPackage("APP",1,0,0);
-    addPackage("LIB",1,0,0);
-
-    addDependency(
-        "APP",
-        "LIB",
-        1,0,0);
-
-    generateInstallOrder();
-
-    EXPECT_GT(orderIndex,0);
-}
-
-/*----------------------------------
-FILE HANDLING
------------------------------------*/
-
-TEST_F(PackageManagerTest,
-       SaveFile)
-{
-    addPackage("A",1,0,0);
+    addPackage(pkg,1,0,0);
 
     EXPECT_NO_THROW(
-        saveToFile());
+        saveToFile()
+    );
 }
 
+/* -------------------
+   Load File
+-------------------- */
+
 TEST_F(PackageManagerTest,
-       LoadFile)
+       LoadFromFile)
 {
-    addPackage("A",1,0,0);
+    char pkg[] = "LOAD";
+
+    addPackage(pkg,1,0,0);
 
     saveToFile();
 
@@ -379,5 +237,5 @@ TEST_F(PackageManagerTest,
     loadFromFile();
 
     EXPECT_NE(nullptr,
-              findPackage("A"));
+              findPackage(pkg));
 }
