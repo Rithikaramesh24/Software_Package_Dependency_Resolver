@@ -2,7 +2,6 @@
 #define PACKAGE_MANAGER_H
 
 #define TABLE_SIZE 100
-
 typedef struct
 {
 	int major;
@@ -77,5 +76,14 @@ void loadFromFile();
 
 void showPackageStatus();
 void freePackages();
+int compareVersion(Version v1, Version v2);
+
+void resetVisits();
+
+int detectCycleDFS(Package *pkg);
+
+extern char installOrder[100][32];
+
+extern int orderIndex;
 
 #endif
