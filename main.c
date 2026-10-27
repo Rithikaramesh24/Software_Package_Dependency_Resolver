@@ -11,10 +11,10 @@ int main()
 	}
 
 	char name[32];
+	const Package *p;
 	int major;
 	int minor;
 	int patch;
-	Package *p;
 	do
 	{
 		printf("\n===== PACKAGE MANAGER =====\n");
@@ -86,9 +86,7 @@ int main()
 		case 5:
 		{
 			char pkgName[32];
-			int major;
-			int minor;
-			int patch;
+		
 			printf("Package Name: ");
 			scanf("%31s", pkgName);
 			printf("New Version (major minor patch): ");
@@ -102,11 +100,6 @@ int main()
 		{
 			char pkg[32];
 			char dep[32];
-
-			int major;
-			int minor;
-			int patch;
-
 			printf("Package Name: ");
 			scanf("%31s", pkg);
 			printf("Dependency Name: ");
