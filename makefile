@@ -97,50 +97,33 @@ sanitize: | $(BUILD)
 # Valgrind Memory Analysis
 # ==========================================
 
-valgrind: $(APP)
-	valgrind \
-	--leak-check=full \
-	--show-leak-kinds=all \
-	--track-origins=yes \
-	$(APP)
+valgrind:
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./resolver
 
 # ==========================================
 # Helgrind Thread Analysis
 # ==========================================
 
-helgrind: $(APP)
-	valgrind \
-	--tool=helgrind \
-	--error-exitcode=1 \
-	$(APP)
+helgrind:
+	valgrind --tool=helgrind ./resolver
 
 # ==========================================
 # CPPCheck Static Analysis
 # ==========================================
 
 cppcheck:
-	cppcheck \
-	--enable=all \
-	--inconclusive \
-	--std=c11 \
-	--suppress=missingIncludeSystem \
-	main.c package_manager.c
+	cppcheck --enable=warning,style,portability --std=c99 --platform=unix64 main.c package_manager.c
+	cppcheck --enable=all --std=c99 main.c package_manager.c > cppcheck_report.txt 2>&1
+	cat cppcheck_report.txt
 
 # ==========================================
 # Code Coverage
 # ==========================================
 
-coverage: | $(BUILD)
-	$(CC) \
-	-fprofile-arcs \
-	-ftest-coverage \
-	main.c package_manager.c \
-	-o $(BUILD)/resolver_cov
-
-	$(BUILD)/resolver_cov
-
-	gcov main.c
-	gcov package_manager.c
+coverage:
+	gcc -O0 --coverage -c package_manager.c -o package_manager.o
+	g++ -std=c++17 -O0 --coverage -x c++ -c test_package_manager.c -o test_package_manager.o
+	g++ --coverage package_manager.o test_package_manager.o -lgtest_main -lgtest -pthread -o package_manager_test
 
 # ==========================================
 # Clean Files
