@@ -113,7 +113,7 @@ Package* findPackage(char name[])
 
 //find dependency function
 //search dependency
-Dependency *findDependency(Package *pkg, char depName[])
+Dependency *findDependency(Package *pkg, const char depName[])
 {
 	Dependency *temp = pkg->deps;
 
@@ -169,8 +169,7 @@ void resetVisits()
 int detectCycleDFS(Package *pkg)
 {
 	Dependency *dep;
-	Package *nextPkg;
-
+    Package *nextPkg
 	pkg->visit = GRAY;
 
 	dep = pkg->deps;
@@ -206,15 +205,13 @@ int detectCycleDFS(Package *pkg)
 void topoDFS(Package *pkg)
 {
 	Dependency *dep;
-	Package *nextPkg;
- 
 	pkg->visit = GRAY;
  
 	dep = pkg->deps;
  
 	while(dep != NULL)
 	{
-		nextPkg = findPackage(dep->name);
+		Package *nextPkg = findPackage(dep->name);
  
 		if(nextPkg != NULL &&
 		        nextPkg->visit == WHITE)
@@ -317,7 +314,7 @@ void checkVersionConflicts()
 {
 	Package *pkg;
 	Dependency *dep;
-	Package *requiredPkg;
+	const Package *requiredPkg;
 
 	pkg = head;
 
@@ -376,8 +373,6 @@ void deletePackage(char name[])
  
     Package *hashCurrent;
     Package *hashPrevious;
- 
-    Dependency *dep;
  
     unsigned int index;
  
@@ -443,7 +438,7 @@ void deletePackage(char name[])
  
     while(current->deps != NULL)
     {
-        dep = current->deps;
+       Dependency *dep = current->deps;
         current->deps = current->deps->next;
         free(dep);
     }
@@ -557,7 +552,7 @@ void showDependencies(char packageName[])
 }
 
 //remove dependency function
-void removeDependency(char packageName[], char dependencyName[])
+void removeDependency(char packageName[], const char dependencyName[])
 {
 	Package *pkg;
 	Dependency *current;
@@ -699,7 +694,7 @@ void loadFromFile()
 			int pat;
 
 			fscanf(fp,
-			       "%s %d %d %d",
+			       "%31s %d %d %d",
 			       name,
 			       &maj,
 			       &min,
@@ -720,7 +715,7 @@ void loadFromFile()
 			int pat;
 
 			fscanf(fp,
-			       "%s %s %d %d %d",
+			       "%31s %31s %d %d %d",
 			       pkg,
 			       dep,
 			       &maj,
